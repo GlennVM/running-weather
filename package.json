@@ -1,0 +1,15 @@
+{
+  "name": "running-weather",
+  "version": "0.0.0",
+  "description": "Script that every day tells me whether it's running weather",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "date-fns": "^3.6.0"
+  }
+}
