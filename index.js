@@ -1,12 +1,10 @@
-const axios = require('axios')
 const { addHours, format } = require('date-fns')
-
-const API_KEY = ""
+const api = require('./client')
 
 const start = async () => {
     try {
         const {generalAdvice, recommendations} = await createRunningRecommendation('Gent', 'Belgium')
-        console.log(generalAdvice)
+        console.log(`Our recommendation:\n\n${generalAdvice}\n`)
         if (recommendations) recommendations.forEach(rec => console.log(rec))
     } catch (e) {
         console.error(e)
@@ -14,45 +12,40 @@ const start = async () => {
 }
 
 const createRunningRecommendation = async (city = 'Gent', country = 'Belgium') => {
-    const { lat, lon } = await getCoordinates(city, country)
-    const { data } = await getWeatherDataNext15Hours(lat, lon)
+    // Get coordinates and weather data
+    const { lat, lon } = await api.getCoordinates(city, country)
+    const { city: cityData, list: weatherList } = await api.getWeatherData(lat, lon)
 
-    const timezoneOffset = data.city.timezone
-    const weather = data.list.slice(0, 5)
+    const weather = weatherList.slice(0,5)
+    const timezoneOffset = cityData.timezone
 
+    // Generate running recommendation based on weather data
     return getRecommendation(weather, timezoneOffset)
-}
-
-const getCoordinates = async (city, country) => {
-    const response = await axios.get(`http://api.openweathermap.org/geo/1.0/direct?q=${city},${country}&appid=${API_KEY}`)
-    const { lat, lon } = response.data[0]
-    return { lat, lon }
-}
-
-const getWeatherDataNext15Hours = (lat, lon) => {
-    return axios.get(`http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`)
 }
 
 const getRecommendation = (predictions, timezoneOffset) => {
     const { max: maxTemp, min: minTemp } = getExtremaTemperatures(predictions)
-
-    const goodWeatherConditions = predictions.filter(prediction => {
-        const { weather } = prediction
-        const weatherType = weather[0].id
-
-        if (weatherType >= 300 && weatherType <= 399) return true
-        if (weatherType >= 500 && weatherType <= 502) return true
-        if (weatherType >= 800 && weatherType <= 899) return true
-
-        return false
-    })
-
     if (maxTemp < 5) return { generalAdvice: `It's too cold, hit the threadmill!` }
     if (minTemp > 25) return { generalAdvice: `It's too hot, hit the threadmill!` }
 
+    const goodWeatherConditions = getGoodWeatherConditions(predictions)
     if (goodWeatherConditions.length === 0) return { generalAdvice: 'The weather is terrible, hit the threadmill!' }
 
-    const recommendations = goodWeatherConditions.map(condition => {
+    const recommendations = getGoodWeatherRecommendations(goodWeatherConditions, timezoneOffset)
+    return { generalAdvice: '🏃‍♂️‍➡️ Run, Forest! Run! 🏃‍♂️‍➡️', recommendations }
+}
+
+const getGoodWeatherConditions = (predictions) => {
+    return predictions.filter(prediction => {
+        const weatherType = prediction.weather[0].id
+        return (weatherType >= 300 && weatherType <= 399) || // Drizzle
+               (weatherType >= 500 && weatherType <= 502) || // Rain
+               (weatherType >= 800 && weatherType <= 899)   // Clear sky or Clouds
+    })
+}
+
+const getGoodWeatherRecommendations = (conditions, timezoneOffset) => {
+    return conditions.map(condition => {
         const timestamp = (condition.dt - timezoneOffset) * 1000
         const startTime = format(timestamp, 'HH:mm')
         const endTime = format(addHours(timestamp, 3), 'HH:mm')
@@ -76,8 +69,6 @@ const getRecommendation = (predictions, timezoneOffset) => {
 
         return `${recommendation}\n 🌡️  ${condition.main.temp}\n`
     })
-
-    return { generalAdvice: '🏃‍♂️‍➡️ Run, Forest! Run! 🏃‍♂️‍➡️', recommendations }
 }
 
 const getExtremaTemperatures = (predictions) => {
