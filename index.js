@@ -19,23 +19,24 @@ const createRunningRecommendation = async (city = 'Gent', country = 'Belgium') =
     const weather = weatherList.slice(0,5)
     const timezoneOffset = cityData.timezone
 
-    // Generate running recommendation based on weather data
     return getRecommendation(weather, timezoneOffset)
 }
 
 const getRecommendation = (predictions, timezoneOffset) => {
     const { max: maxTemp, min: minTemp } = getExtremaTemperatures(predictions)
-    if (maxTemp < 5) return { generalAdvice: `It's too cold, hit the threadmill!` }
-    if (minTemp > 25) return { generalAdvice: `It's too hot, hit the threadmill!` }
+    if (maxTemp < 5) return { generalAdvice: `It's too cold ❄️, hit the threadmill!` }
+    if (minTemp > 25) return { generalAdvice: `It's too hot 🥵, hit the threadmill!` }
 
-    const goodWeatherConditions = getGoodWeatherConditions(predictions)
+    const goodWeatherConditions = filterGoodWeatherConditions(predictions)
     if (goodWeatherConditions.length === 0) return { generalAdvice: 'The weather is terrible, hit the threadmill!' }
 
-    const recommendations = getGoodWeatherRecommendations(goodWeatherConditions, timezoneOffset)
-    return { generalAdvice: '🏃‍♂️‍➡️ Run, Forest! Run! 🏃‍♂️‍➡️', recommendations }
+    return { 
+        generalAdvice: '🏃‍♂️‍➡️ Run, Forest! Run! 🏃‍♂️‍➡️',
+        recommendations: parseGoodWeatherRecommendations(goodWeatherConditions, timezoneOffset) 
+    }
 }
 
-const getGoodWeatherConditions = (predictions) => {
+const filterGoodWeatherConditions = (predictions) => {
     return predictions.filter(prediction => {
         const weatherType = prediction.weather[0].id
         return (weatherType >= 300 && weatherType <= 399) || // Drizzle
@@ -44,7 +45,7 @@ const getGoodWeatherConditions = (predictions) => {
     })
 }
 
-const getGoodWeatherRecommendations = (conditions, timezoneOffset) => {
+const parseGoodWeatherRecommendations = (conditions, timezoneOffset) => {
     return conditions.map(condition => {
         const timestamp = (condition.dt - timezoneOffset) * 1000
         const startTime = format(timestamp, 'HH:mm')
@@ -66,8 +67,8 @@ const getGoodWeatherRecommendations = (conditions, timezoneOffset) => {
         if (weatherType >= 800 && weatherType <= 899) {
             recommendation = `- ${startTime} - ${endTime}: ⛅️ it might be a bit cloudy`
         }
-
-        return `${recommendation}\n 🌡️  ${condition.main.temp}\n`
+        console.log(condition)
+        return `${recommendation}\n 🌡️  ${condition.main.temp}°C - 💨 ${condition.wind.speed}km/h\n`
     })
 }
 
