@@ -1,11 +1,14 @@
 const { addHours, format } = require('date-fns')
+
 const api = require('./client')
+const sendMail = require('./mailer')
 
 const start = async () => {
     try {
         const {generalAdvice, recommendations} = await createRunningRecommendation('Gent', 'Belgium')
         console.log(`Our recommendation:\n\n${generalAdvice}\n`)
         if (recommendations) recommendations.forEach(rec => console.log(rec))
+        await sendMail('test@example.com', generalAdvice, recommendations || '')
     } catch (e) {
         console.error(e)
     }
